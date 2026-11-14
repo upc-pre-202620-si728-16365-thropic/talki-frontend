@@ -524,11 +524,18 @@ export default function SessionDetailPage({
   async function advanceLifecycleAfterPractice() {
     try {
       let current = session;
-      if (current?.status === "DRAFT") current = await sessions.start(id);
-      if (current?.status === "RECORDING") current = await sessions.finalize(id);
-      if (current) setSession(current);
+      if (current?.status === "DRAFT") {
+        current = await sessions.start(id);
+        setSession(current); // conserva RECORDING aunque luego falle el cierre
+      }
+      if (current?.status === "RECORDING") {
+        current = await sessions.finalize(id);
+        setSession(current);
+      }
     } catch (err) {
       toast.error(lifecycleErrorMessage(err, "No se pudo actualizar el estado de la sesión"));
+      // Reconciliar con el backend para que un reintento parta del estado real.
+      sessions.get(id).then(setSession).catch(() => {});
     }
   }
 
