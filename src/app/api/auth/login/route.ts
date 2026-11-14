@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, serviceBaseUrl } from "@/lib/config";
-import { userFromToken } from "@/lib/jwt";
+import { accessTokenFrom, cookieMaxAgeFor, userFromToken } from "@/lib/jwt";
 
 export const runtime = "nodejs";
 
@@ -34,23 +34,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const data = (await res.json()) as { token?: string };
-  if (!data.token) {
+  const token = accessTokenFrom(
+    (await res.json()) as { accessToken?: string; token?: string },
+  );
+  if (!token) {
     return NextResponse.json({ error: "Respuesta sin token" }, { status: 502 });
   }
 
-  const user = userFromToken(data.token);
+  const user = userFromToken(token);
   if (!user) {
     return NextResponse.json({ error: "Token inválido" }, { status: 502 });
   }
 
   const store = await cookies();
-  store.set(SESSION_COOKIE, data.token, {
+  store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24, // 24h
+    maxAge: cookieMaxAgeFor(token), // vida del access token
   });
 
   return NextResponse.json({ user });
