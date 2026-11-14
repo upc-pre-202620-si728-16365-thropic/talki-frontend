@@ -47,3 +47,18 @@ export function userFromToken(token: string): TalkiUser | null {
   if (isExpired(payload)) return null;
   return { userId: payload.userId, email: payload.sub };
 }
+
+/**
+ * identity-service responde `accessToken` (+ `refreshToken`) desde SB1-02;
+ * se acepta `token` por compatibilidad con la versión anterior del contrato.
+ */
+export function accessTokenFrom(data: { accessToken?: string; token?: string } | null): string | null {
+  return data?.accessToken ?? data?.token ?? null;
+}
+
+/** Vida de la cookie alineada con el `exp` del access token (mínimo 60 s). */
+export function cookieMaxAgeFor(token: string, fallbackSeconds = 15 * 60): number {
+  const exp = decodeJwt(token)?.exp;
+  if (!exp) return fallbackSeconds;
+  return Math.max(60, Math.floor(exp - Date.now() / 1000));
+}

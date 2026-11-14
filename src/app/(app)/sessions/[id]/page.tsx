@@ -494,6 +494,19 @@ export default function SessionDetailPage({
     }
   }, [feedbacks]);
 
+  async function onStart() {
+    setFinalizing(true);
+    try {
+      const updated = await sessions.start(id);
+      setSession(updated);
+      toast.success("Práctica iniciada");
+    } catch (err) {
+      toast.error(lifecycleErrorMessage(err, "No se pudo iniciar la práctica"));
+    } finally {
+      setFinalizing(false);
+    }
+  }
+
   async function onFinalize() {
     setFinalizing(true);
     try {
@@ -501,15 +514,21 @@ export default function SessionDetailPage({
       setSession(updated);
       toast.success("Sesión finalizada, análisis en proceso");
     } catch (err) {
-      const msg =
-        err instanceof ApiError && err.status >= 500
-          ? "El backend solo finaliza sesiones en estado RECORDING."
-          : err instanceof ApiError
-            ? err.message
-            : "No se pudo finalizar";
-      toast.error(msg);
+      toast.error(lifecycleErrorMessage(err, "No se pudo finalizar"));
     } finally {
       setFinalizing(false);
+    }
+  }
+
+  /** Lleva la sesión hasta PROCESSING tras grabar: DRAFT → RECORDING → PROCESSING. */
+  async function advanceLifecycleAfterPractice() {
+    try {
+      let current = session;
+      if (current?.status === "DRAFT") current = await sessions.start(id);
+      if (current?.status === "RECORDING") current = await sessions.finalize(id);
+      if (current) setSession(current);
+    } catch (err) {
+      toast.error(lifecycleErrorMessage(err, "No se pudo actualizar el estado de la sesión"));
     }
   }
 
@@ -517,10 +536,9 @@ export default function SessionDetailPage({
     const analysis = analyzePractice(transcript, durationSeconds);
     setOverallScore(analysis.scores.overall);
 
-    const pipelineId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `sess-${id}-${Date.now()}`;
+    // El reporte de análisis se consulta por el id real de la sesión.
+    const pipelineId = String(id);
+    await advanceLifecycleAfterPractice();
 
     void coach
       .finalize(pipelineId, {
@@ -607,6 +625,15 @@ export default function SessionDetailPage({
         )}
       </div>
 
+      {isDraft && (
+        <div className="flex justify-end">
+          <Button onClick={onStart} disabled={finalizing} size="sm" variant="outline">
+            {finalizing ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+            Iniciar práctica
+          </Button>
+        </div>
+      )}
+
       {/* Aviso borrador */}
       {isDraft && (
         <p className="flex items-start gap-2 rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
@@ -631,4 +658,11 @@ export default function SessionDetailPage({
       />
     </div>
   );
+}
+
+function lifecycleErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && err.status === 409) {
+    return "La sesión no está en el estado requerido para esta acción.";
+  }
+  return err instanceof ApiError ? err.message : fallback;
 }

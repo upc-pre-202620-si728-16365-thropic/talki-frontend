@@ -44,6 +44,10 @@ export const sessions = {
   create: (input: CreateSessionInput) =>
     gateway<Session>("session", "POST", "v1/sessions", { body: input }),
 
+  /** SB1-03: DRAFT → RECORDING. Una transición inválida responde 409. */
+  start: (id: number | string) =>
+    gateway<Session>("session", "POST", `v1/sessions/${id}/start`),
+
   finalize: (id: number | string) =>
     gateway<Session>("session", "POST", `v1/sessions/${id}/finalize`),
 

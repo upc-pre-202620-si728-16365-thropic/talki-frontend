@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, serviceBaseUrl } from "@/lib/config";
-import { userFromToken } from "@/lib/jwt";
+import { accessTokenFrom, cookieMaxAgeFor, userFromToken } from "@/lib/jwt";
 
 export const runtime = "nodejs";
 
@@ -60,19 +60,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ registered: true, autoLogin: false });
   }
 
-  const data = (await loginRes.json()) as { token?: string };
-  const user = data.token ? userFromToken(data.token) : null;
-  if (!data.token || !user) {
+  const token = accessTokenFrom(
+    (await loginRes.json()) as { accessToken?: string; token?: string },
+  );
+  const user = token ? userFromToken(token) : null;
+  if (!token || !user) {
     return NextResponse.json({ registered: true, autoLogin: false });
   }
 
   const store = await cookies();
-  store.set(SESSION_COOKIE, data.token, {
+  store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24,
+    maxAge: cookieMaxAgeFor(token), // vida del access token
   });
 
   return NextResponse.json({ registered: true, autoLogin: true, user });
