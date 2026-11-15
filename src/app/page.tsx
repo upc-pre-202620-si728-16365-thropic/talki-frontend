@@ -155,11 +155,13 @@ export default async function Home() {
                     </div>
                   ))}
                 </dl>
-                <div className="mt-5 rounded-2xl border-l-4 border-pink-500 bg-pink-50/60 px-4 py-3">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-pink-600">
-                    <Sparkles className="size-4" /> Coach IA
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">Haz una pausa breve antes de presentar tu hipótesis: le dará más peso.</p>
+                <div className="mt-5 rounded-2xl bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500 p-px">
+                  <div className="rounded-[15px] bg-white px-4 py-3">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-pink-600">
+                      <Sparkles className="size-4" /> Coach IA
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">Haz una pausa breve antes de presentar tu hipótesis: le dará más peso.</p>
+                  </div>
                 </div>
               </div>
             </div>
